@@ -1,68 +1,28 @@
 'use strict';
 
-const request = require('supertest'); // Supertest allows you to make HTTP requests to your Express app for testing.
-const app = require('../lib/server.js'); // Import your Express app
-const { sequelize } = require('../lib/auth/models/index.js'); // Import Sequelize and database configurations
-require('dotenv').config();
+const supertest = require('supertest');
+const app = require('../src/server.js');
+const request = supertest(app);
+const base64 = require('base-64');
 
-// Use beforeAll to synchronize your database before running tests
-beforeAll(async () => {
-  // Sync your Sequelize models with the database
-  await sequelize.sync({ force: true }); // Use force: true to recreate the database during testing
-});
-
-// Use beforeEach to set up any necessary data before each test
-beforeEach(async () => {
-  // Create any records required for tests to pass
-  // You can create users, populate your database, or perform any setup needed
-});
-
-// Use afterEach to clean up after each test
-afterEach(async () => {
-  // Drop tables or delete records created during tests
-  // Reset the database to a clean state
-});
-
-// Use afterAll to perform cleanup after all tests are finished
-afterAll(async () => {
-  // Drop the tables in the database
-  await sequelize.close(); // Close the database connection
-});
-
-describe('Testing our auth server', () => {
-  test('User should be able to create an account', async () => {
-    // Create a test user object with signup data
-    const testUser = {
-      username: 'testuser',
-      password: 'testpassword',
-    };
-
-    // Use Supertest to make a POST request to the signup route
-    const response = await request(app)
-      .post('/signup')
-      .send(testUser);
-
-    // Perform assertions to check if the signup was successful
-    expect(response.status).toBe(201); // Expect a 201 Created status code
-    expect(response.body.username).toBe(testUser.username); // Check if the username matches
-    // You can add more assertions as needed
+describe('Testing the auth workflow', () => {
+  test('Should be able to register a user on POST /signup', async () => {
+    let response = await request.post('/signup').send({
+      username: 'Test',
+      password: 'test',
+    });
+    expect(response.status).toBe(200);
+    expect(response.body.username).toBe('Test');
   });
 
-  test('User should be able to login to an existing account', async () => {
-    // Create a test user object with login credentials
-    const testUser = {
-      username: 'testuser',
-      password: 'testpassword',
-    };
+  test('Should be able to login in an existing user', async () => {
+    let encodedCredentials = base64.encode('Test:test');
 
-    // Use Supertest to make a POST request to the signin route with basic authentication
-    const response = await request(app)
-      .post('/signin')
-      .auth(testUser.username, testUser.password);
+    let response = await request.post('/signin').set({
+      Authorization: `Basic ${encodedCredentials}`,
+    });
 
-    // Perform assertions to check if the signin was successful
-    expect(response.status).toBe(200); // Expect a 200 OK status code
-    expect(response.body.username).toBe(testUser.username); // Check if the username matches
-    // You can add more assertions as needed
+    expect(response.status).toBe(200);
+    expect(response.body.username).toBe('Test');
   });
 });
